@@ -1,4 +1,4 @@
-package alodistributedmencached
+package pkg
 
 type ByteView struct {
 	b []byte
