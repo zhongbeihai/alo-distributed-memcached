@@ -17,6 +17,7 @@ type PeerGetter interface {
 
 /*
 HTTPGetter implements PeerGetter interface and uses HTTP to get data from other nodes.
+Implement HTTP Client function for Node
 */
 type HTTPGetter struct {
 	baseURL string
