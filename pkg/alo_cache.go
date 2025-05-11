@@ -22,7 +22,7 @@ type Group struct {
 	mainCache ConcurrentCache
 	// HTTPPool implement PeerPicker interface. When the data is not in current node, current node will use HTTPPool.PickPeer()
 	// to get the **HTTPGetter** of other node (not the other node) that has the data.
-	peerPicker     PeerPicker 
+	peerPicker PeerPicker
 }
 
 var (
@@ -66,8 +66,8 @@ func (g *Group) Get(key string) (ByteView, error) {
 	return g.load(key)
 }
 
-func (g *Group) RegisterPeerPicker(peerPicker PeerPicker){
-	if g.peerPicker != nil{
+func (g *Group) RegisterPeerPicker(peerPicker PeerPicker) {
+	if g.peerPicker != nil {
 		panic("RegisterPeerPick() called more than once")
 	}
 	g.peerPicker = peerPicker
@@ -75,7 +75,7 @@ func (g *Group) RegisterPeerPicker(peerPicker PeerPicker){
 
 func (g *Group) load(key string) (value ByteView, err error) {
 	if g.peerPicker != nil {
-		if peer, ok := g.peerPicker.PickPeer(key); ok{
+		if peer, ok := g.peerPicker.PickPeer(key); ok {
 			if value, err := g.getFromPeer(peer, key); err == nil {
 				return value, nil
 			}
@@ -85,7 +85,7 @@ func (g *Group) load(key string) (value ByteView, err error) {
 	return g.getLocally(key)
 }
 
-func (g *Group) getFromPeer(peer PeerGetter, key string) (ByteView, error){
+func (g *Group) getFromPeer(peer PeerGetter, key string) (ByteView, error) {
 	bytes, err := peer.GetDataFromPeer(g.name, key)
 	if err != nil {
 		return ByteView{}, err

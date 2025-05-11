@@ -15,6 +15,9 @@ type PeerGetter interface {
 	GetDataFromPeer(group string, key string) ([]byte, error)
 }
 
+/*
+HTTPGetter implements PeerGetter interface and uses HTTP to get data from other nodes.
+*/
 type HTTPGetter struct {
 	baseURL string
 }
