@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"sync"
+
+	singleflight "github.com/alo-distributed-memcached/pkg/single_flight"
 )
 
 type Getter interface {
@@ -23,6 +25,7 @@ type Group struct {
 	// HTTPPool implement PeerPicker interface. When the data is not in current node, current node will use HTTPPool.PickPeer()
 	// to get the **HTTPGetter** of other node (not the other node) that has the data.
 	peerPicker PeerPicker
+	loader *singleflight.CallsGroup
 }
 
 var (
@@ -41,6 +44,7 @@ func NewGroup(name string, cacheBytes int64, getter Getter) *Group {
 		name:      name,
 		getter:    getter,
 		mainCache: ConcurrentCache{cacheSize: cacheBytes},
+		loader: &singleflight.CallsGroup{},
 	}
 	globeGroups[name] = g
 	return g
@@ -74,15 +78,22 @@ func (g *Group) RegisterPeerPicker(peerPicker PeerPicker) {
 }
 
 func (g *Group) load(key string) (value ByteView, err error) {
-	if g.peerPicker != nil {
-		if peer, ok := g.peerPicker.PickPeer(key); ok {
-			if value, err := g.getFromPeer(peer, key); err == nil {
-				return value, nil
+	view, err := g.loader.Do(key, func() (interface{}, error) {
+		if g.peerPicker != nil {
+			if peer, ok := g.peerPicker.PickPeer(key); ok{
+				if value, err = g.getFromPeer(peer, key); err == nil{
+					return value, nil
+				}
 			}
-			log.Println("[AloCache] Failed to get from pper", err)
 		}
+		return g.getLocally(key)
+	})
+
+	if err == nil {
+		return view.(ByteView), nil
 	}
-	return g.getLocally(key)
+
+	return
 }
 
 func (g *Group) getFromPeer(peer PeerGetter, key string) (ByteView, error) {
