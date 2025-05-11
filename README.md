@@ -1,5 +1,5 @@
-# alo-distributed-mencached
-
+# Alo-distributed-memcached
+Implement an basic but powerful distributed memcached system by go
 # 1. Flow Review
 
 ```text
@@ -72,3 +72,16 @@ Detailed for (2)
          |
          | Used by HTTPPool for node selection
 ```
+
+# Technologies Used
+- **Consistent Hashing**: Used to distribute keys evenly across cache nodes and minimize rebalancing when nodes join or leave the cluster.
+
+- **LRU (Least Recently Used) Cache**: Implements an in-memory cache with automatic eviction of the least recently used items to manage memory efficiently.
+
+- **Singleflight**: Prevents cache breakdown by ensuring that only one request for a given key is in-flight at any time, deduplicating concurrent requests.
+
+- **Protocol Buffers (Protobuf)**: Used for efficient, language-neutral serialization of messages exchanged between nodes.
+
+- **Modular Design with Interfaces**: The use of interfaces such as `PeerPicker` and `PeerGetter` decouples node selection and communication logic, making the system extensible and easy to maintain.
+
+These technologies and patterns together enable the system to be scalable, efficient, and fault-tolerant, suitable for distributed caching scenarios.
