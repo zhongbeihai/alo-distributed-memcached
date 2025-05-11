@@ -6,7 +6,7 @@ import (
 )
 
 func TestHashing(t *testing.T) {
-	hash := NewConsistentHash(3, func(key []byte) uint32 {
+	hash := NewConsistentHashMap(3, func(key []byte) uint32 {
 		i, _ := strconv.Atoi(string(key))
 		return uint32(i)
 	})
@@ -23,7 +23,7 @@ func TestHashing(t *testing.T) {
 	}
 
 	for k, v := range testCases {
-		if hash.AssignNode(k) != v {
+		if hash.GetNode(k) != v {
 			t.Errorf("Asking for %s, should have yielded %s", k, v)
 		}
 	}
@@ -35,7 +35,7 @@ func TestHashing(t *testing.T) {
 	testCases["27"] = "8"
 
 	for k, v := range testCases {
-		if hash.AssignNode(k) != v {
+		if hash.GetNode(k) != v {
 			t.Errorf("Asking for %s, should have yielded %s", k, v)
 		}
 	}

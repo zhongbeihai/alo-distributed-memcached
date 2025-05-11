@@ -27,5 +27,5 @@ func main() {
 	addr := "localhost:9999"
 	peers := pkg.NewHTTPPool(addr)
 	log.Println("alo-distributed-cache is running at", addr)
-	log.Fatal(http.ListenAndServe(addr, *peers))
+	log.Fatal(http.ListenAndServe(addr, peers))
 }

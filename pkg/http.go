@@ -5,13 +5,29 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"sync"
+
+	consistenthash "github.com/alo-distributed-memcached/pkg/consistent_hash"
 )
 
-const defaultBasePath = "/alo-cache/"
+const (
+	defaultBasePath = "/alo-cache/"
+	defaultReplicas = 50
+)
 
+/*
+1. HTTPPool implements PeerPicker interface.
+When the data is not in current node, current node will use HTTPPool.PickPeer()
+to get the **HTTPGetter** of other node (not the other node) that has the data.
+2. HTTPPool implements ServerHTTP interface.
+It will handle the request from other node and return the data to the other node.
+*/
 type HTTPPool struct {
-	self     string // store it owns hostname and port
-	basePath string
+	self       string // store it owns hostname and port
+	basePath   string
+	mu         sync.Mutex
+	peers      *consistenthash.ConsistentHashMap
+	httpGetter map[string]*HTTPGetter // keyed by e.g. "http://10.0.0.2:8008"
 }
 
 func NewHTTPPool(self string) *HTTPPool {
@@ -21,11 +37,31 @@ func NewHTTPPool(self string) *HTTPPool {
 	}
 }
 
-func (h *HTTPPool) log(format string, v ...interface{}) {
-	log.Printf("[Server %s] %s", h.self, fmt.Sprintf(format, v...))
+func (h *HTTPPool) SetPeers(peers ...string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	h.peers = consistenthash.NewConsistentHashMap(defaultReplicas, nil)
+	h.peers.AddNode(peers...)
+	h.httpGetter = make(map[string]*HTTPGetter)
+
+	for _, peer := range peers {
+		h.httpGetter[peer] = &HTTPGetter{baseURL: peer + h.basePath}
+	}
 }
 
-func (h HTTPPool) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *HTTPPool) PickPeer(key string) (PeerGetter, bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	if peer := h.peers.GetNode(key); peer != "" && peer != h.self {
+		h.log("pick peer %s", peer)
+		return h.httpGetter[peer], true
+	}
+	return nil, false
+}
+
+func (h *HTTPPool) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !strings.HasPrefix(r.URL.Path, h.basePath) {
 		panic("unexpected path:" + r.URL.Path)
 	}
@@ -54,4 +90,8 @@ func (h HTTPPool) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Write(view.ByteSlice())
+}
+
+func (h *HTTPPool) log(format string, v ...interface{}) {
+	log.Printf("[Server %s] %s", h.self, fmt.Sprintf(format, v...))
 }
