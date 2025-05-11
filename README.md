@@ -1,6 +1,6 @@
 # Alo-distributed-memcached
 Implement an basic but powerful distributed memcached system by go
-# 1. Flow Review
+#  Flow Review
 
 ```text
 1  Receive key  -->  Check if cached  -------- Yes --------->  Return cached value (1)
