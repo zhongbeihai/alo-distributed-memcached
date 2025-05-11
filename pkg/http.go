@@ -7,7 +7,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/alo-distributed-memcached/pb"
 	consistenthash "github.com/alo-distributed-memcached/pkg/consistent_hash"
+	"google.golang.org/protobuf/proto"
 )
 
 const (
@@ -50,6 +52,16 @@ func (h *HTTPPool) SetPeers(peers ...string) {
 	}
 }
 
+// ------ PeerPicker interface ------
+type PeerPicker interface {
+	PickPeer(key string) (peer PeerGetter, ok bool)
+}
+
+var _ PeerPicker = (*HTTPPool)(nil)
+
+// implement PeerPicker interface
+// PickPeer() is used to pick a peer from the consistent hash ring to get the data from other node
+// return PeerGetter, then should call PeerGetter.GetDataFromPeer() to get the data
 func (h *HTTPPool) PickPeer(key string) (PeerGetter, bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -88,8 +100,16 @@ func (h *HTTPPool) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	body, err := proto.Marshal(&pb.Response{
+		Value: view.ByteSlice(),
+	})
+	if err != nil{
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Write(view.ByteSlice())
+	w.Write(body)
 }
 
 func (h *HTTPPool) log(format string, v ...interface{}) {

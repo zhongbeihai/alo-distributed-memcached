@@ -29,3 +29,46 @@ Detailed for (2)
 - **main.go**: The main entry point of the application. Sets up the cache group, configures the HTTP pool (cluster), and starts the HTTP server.
 
 
+# Dependency
+```
++-------------------+
+|      Group        |
++-------------------+
+         |
+         | 1. Needs to select the node responsible for a key
+         v
++-------------------+
+|   PeerPicker      |<-----------------------------+
+|   (interface)     |                              |
++-------------------+                              |
+         |                                         |
+         | Implemented by HTTPPool                 |
+         v                                         |
++-------------------+                              |
+|    HTTPPool       |                              |
++-------------------+                              |
+         |                                         |
+         | 2. Returns a PeerGetter for the node    |
+         v                                         |
++-------------------+                              |
+|   PeerGetter      |<--------------------------+  |
+|   (interface)     |                           |  |
++-------------------+                           |  |
+         |                                      |  |
+         | Implemented by HTTPGetter            |  |
+         v                                      |  |
++-------------------+                           |  |
+|   HTTPGetter      |                           |  |
++-------------------+                           |  |
+         |                                      |  |
+         | 3. Communicates with remote node via |  |
+         |    HTTP to fetch data                |  |
+         +--------------------------------------|--+
+                                                |
++-------------------+                           |
+| ConsistentHashMap |<--------------------------+
++-------------------+
+         ^
+         |
+         | Used by HTTPPool for node selection
+```

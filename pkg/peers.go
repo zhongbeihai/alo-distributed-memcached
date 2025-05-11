@@ -5,14 +5,14 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+
+	"github.com/alo-distributed-memcached/pb"
+	"google.golang.org/protobuf/proto"
 )
 
-type PeerPicker interface {
-	PickPeer(key string) (peer PeerGetter, ok bool)
-}
 
 type PeerGetter interface {
-	GetDataFromPeer(group string, key string) ([]byte, error)
+	GetDataFromPeer(in *pb.Request, out *pb.Response) error
 }
 
 /*
@@ -23,31 +23,35 @@ type HTTPGetter struct {
 	baseURL string
 }
 
-func (h *HTTPGetter) GetDataFromPeer(group string, key string) ([]byte, error) {
+func (h *HTTPGetter) GetDataFromPeer(in *pb.Request, out *pb.Response) error {
 	// /<basepath>/<groupname>/<key>
 	url := fmt.Sprintf(
 		"%v%v/%v",
 		h.baseURL,
-		url.QueryEscape(group),
-		url.QueryEscape(key),
+		url.QueryEscape(in.GetGroup()),
+		url.QueryEscape(in.GetKey()),
 	)
 
 	response, err := http.Get(url)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GetDataFromPeer():server returner %v", response.Status)
+		return fmt.Errorf("GetDataFromPeer():server returner %v", response.Status)
 	}
 
 	bytes, err := io.ReadAll(response.Body)
 	if err != nil {
-		return nil, fmt.Errorf("GetDataFromPeer():reading response body: %v", err)
+		return fmt.Errorf("GetDataFromPeer():reading response body: %v", err)
 	}
 
-	return bytes, nil
+	if err := proto.Unmarshal(bytes, out); err != nil{
+		return fmt.Errorf("decoding response body: %v", err)
+	}
+
+	return nil
 }
 
 var _ PeerGetter = (*HTTPGetter)(nil)

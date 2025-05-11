@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "alo-distributed-memcached/pb;pb";
+option go_package = "pb;pb";
 
 package alocachepb;
 
